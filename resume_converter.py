@@ -530,5 +530,14 @@ def convert():
 def health():
     return {'status': 'ok', 'version': '7.6'}
 
+@app.route('/extract', methods=['POST'])
+def extract():
+    if 'file' not in request.files:
+        return {'error': 'No file'}, 400
+    file = request.files['file']
+    doc = Document(io.BytesIO(file.read()))
+    text = '\n'.join([p.text for p in doc.paragraphs if p.text.strip()])
+    return {'text': text, 'filename': file.filename}
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5679)
