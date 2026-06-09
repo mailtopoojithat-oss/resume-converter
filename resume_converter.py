@@ -535,9 +535,13 @@ def extract():
     if 'file' not in request.files:
         return {'error': 'No file'}, 400
     file = request.files['file']
-    doc = Document(io.BytesIO(file.read()))
-    text = '\n'.join([p.text for p in doc.paragraphs if p.text.strip()])
+    filename = file.filename.lower()
+    content = file.read()
+    if filename.endswith('.pdf'):
+        import pdfplumber
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            text = '\n'.join([page.extract_text() or '' for page in pdf.pages])
+    else:
+        doc = Document(io.BytesIO(content))
+        text = '\n'.join([p.text for p in doc.paragraphs if p.text.strip()])
     return {'text': text, 'filename': file.filename}
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5679)
