@@ -537,7 +537,7 @@ def extract():
     file = request.files['file']
     filename = file.filename.lower()
     content = file.read()
-    if filename.endswith('.pdf'):
+    if filename.endswith('.pdf') or content[:4] == b'%PDF':
         import pdfplumber
         with pdfplumber.open(io.BytesIO(content)) as pdf:
             text = '\n'.join([page.extract_text() or '' for page in pdf.pages])
