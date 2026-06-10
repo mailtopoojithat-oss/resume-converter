@@ -530,8 +530,8 @@ def text_to_pdf():
         else:
             pdf.multi_cell(0, 6, txt=line.strip())
 
-    buf = io.BytesIO()
-    pdf.output(buf)
+    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+    buf = io.BytesIO(pdf_bytes)
     buf.seek(0)
     return send_file(buf, as_attachment=True,
         download_name='optimized_resume.pdf',
