@@ -2,3 +2,4 @@ flask
 python-docx
 gunicorn
 pdfplumber
+fpdf
