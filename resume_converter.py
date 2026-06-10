@@ -52,7 +52,6 @@ SKILLS_SECTIONS = {'SKILLS','TECHNICAL SKILLS','CORE COMPETENCIES'}
 PLAIN_SECTIONS  = {'SUMMARY','EDUCATION','LANGUAGES','INTERESTS',
                    'REFERENCES','OBJECTIVE','PROFILE'}
 
-# Expanded — any line starting with these is a bullet in PROJECTS/EXPERIENCE
 ACTION_VERBS = (
     'Accomplished','Accelerated','Achieved','Aligned','Analyzed','Applied',
     'Architected','Assessed','Audited','Automated',
@@ -273,7 +272,6 @@ def add_run(para, text, size_pt, bold=False, color=None, underline=False):
 # ── Section spacer ────────────────────────────────────────────────────────────
 
 def p_spacer(doc):
-    """Single line gap between sections. Never called before the first section."""
     para = make_para(doc, style='Normal', before=0, after=0, line=200)
     run  = para.add_run(' ')
     set_font(run, 4, bold=False)
@@ -289,7 +287,7 @@ def p_name(doc, text):
 
 def p_subtitle(doc, text):
     para = make_para(doc, before=0, after=0, line=220, align='center')
-    add_run(para, text, 12, bold=True)          # bold ← fixed
+    add_run(para, text, 12, bold=True)
     return para
 
 def p_contact(doc, text):
@@ -306,7 +304,7 @@ def p_contact(doc, text):
             if sep: add_run(para, sep, 10, bold=True)
             add_hyperlink(para, part, LINKEDIN_URL)
         else:
-            add_run(para, sep + part, 10, bold=True)   # bold ← fixed
+            add_run(para, sep + part, 10, bold=True)
     return para
 
 def p_section(doc, text):
@@ -389,18 +387,11 @@ def build_docx(text):
     lines           = preprocess(text)
     stage           = 'name'
     current_section = None
-    current_block   = []   # only used for EXPERIENCE, PROJECTS, EDUCATION blocks
-    first_section   = True # skip spacer before very first body section
-    project_count   = 0    # tracks projects within PROJECTS section
+    current_block   = []
+    first_section   = True
+    project_count   = 0
 
     def close_block():
-        """
-        KEY FIX: keep_next=True on all-but-LAST paragraph only.
-        Previously every paragraph got keep_next=True, creating a chain that
-        Word couldn't fit on page 1 — pushing all content to page 2.
-        Now only consecutive pairs within a job/project block stay together.
-        The last paragraph has keep_next=False, allowing page breaks between blocks.
-        """
         n = len(current_block)
         for i, p in enumerate(current_block):
             keep_together(p, keep_lines=True, keep_next=(i < n - 1))
@@ -413,18 +404,15 @@ def build_docx(text):
         if kind == 'BLANK' or not stripped:
             continue
 
-        # ── NAME ──────────────────────────────────────────────────────────────
         if stage == 'name':
             p_name(doc, stripped); stage = 'subtitle'; continue
 
-        # ── SUBTITLE ──────────────────────────────────────────────────────────
         if stage == 'subtitle':
             if re.match(r'^[A-Z][A-Z/|&\s]+$', stripped) and '|' in stripped:
                 p_subtitle(doc, stripped); stage = 'contact'; continue
             else:
                 stage = 'contact'
 
-        # ── CONTACT ───────────────────────────────────────────────────────────
         if stage == 'contact':
             if is_section(stripped):
                 stage = 'body'
@@ -435,16 +423,15 @@ def build_docx(text):
             elif not is_section(stripped):
                 p_contact(doc, stripped); continue
 
-        # ── BODY ──────────────────────────────────────────────────────────────
         stage = 'body'
 
         if is_section(stripped):
             close_block()
             if first_section:
-                first_section = False      # no spacer before SUMMARY/SKILLS/etc.
+                first_section = False
             else:
-                p_spacer(doc)              # single line gap between all other sections
-            project_count   = 0            # reset for new section
+                p_spacer(doc)
+            project_count   = 0
             current_section = stripped.upper()
             para = p_section(doc, stripped)
             keep_together(para, keep_lines=True, keep_next=True)
@@ -453,19 +440,16 @@ def build_docx(text):
 
         sec_name = current_section or ''
 
-        # SUMMARY — flows naturally, no block tracking needed
         if sec_name == 'SUMMARY':
             para = p_summary(doc, stripped)
             keep_together(para, keep_lines=True, keep_next=False)
             continue
 
-        # SKILLS — flows naturally, no block tracking needed
         if sec_name in SKILLS_SECTIONS:
             para = p_skills(doc, stripped)
             keep_together(para, keep_lines=True, keep_next=False)
             continue
 
-        # EDUCATION — degree stays with school via block tracking
         if sec_name == 'EDUCATION':
             para = (p_edu_degree if is_edu_degree(stripped) else p_edu_school)(doc, stripped)
             current_block.append(para)
@@ -476,7 +460,6 @@ def build_docx(text):
             keep_together(para, keep_lines=True, keep_next=False)
             continue
 
-        # EXPERIENCE — job title + bullets kept together via block tracking
         if sec_name in ('PROFESSIONAL EXPERIENCE', 'EXPERIENCE', 'WORK EXPERIENCE'):
             if is_job_line(stripped):
                 close_block()
@@ -487,7 +470,6 @@ def build_docx(text):
                 current_block.append(para)
             continue
 
-        # PROJECTS — project title + bullets kept together; spacer between projects
         if sec_name == 'PROJECTS':
             if is_bullet or stripped.startswith(ACTION_VERBS):
                 para = p_bullet(doc, stripped)
@@ -495,7 +477,7 @@ def build_docx(text):
             else:
                 close_block()
                 if project_count > 0:
-                    p_spacer(doc)          # single line gap between projects
+                    p_spacer(doc)
                 project_count += 1
                 para = p_job(doc, stripped)
                 current_block = [para]
@@ -554,6 +536,9 @@ def text_to_pdf():
     return send_file(buf, as_attachment=True,
         download_name='optimized_resume.pdf',
         mimetype='application/pdf')
+
+@app.route('/extract', methods=['POST'])
+def extract():
     if 'file' not in request.files:
         return {'error': 'No file'}, 400
     file = request.files['file']
