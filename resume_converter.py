@@ -530,8 +530,30 @@ def convert():
 def health():
     return {'status': 'ok', 'version': '7.6'}
 
-@app.route('/extract', methods=['POST'])
-def extract():
+@app.route('/text-to-pdf', methods=['POST'])
+def text_to_pdf():
+    from fpdf import FPDF
+    optimized_text = request.form.get('optimized_text', '')
+    if not optimized_text:
+        return {'error': 'No optimized_text provided'}, 400
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_margins(15, 15, 15)
+    pdf.set_font("Arial", size=11)
+
+    for line in optimized_text.split('\n'):
+        if line.strip() == '':
+            pdf.ln(4)
+        else:
+            pdf.multi_cell(0, 6, txt=line.strip())
+
+    buf = io.BytesIO()
+    pdf.output(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True,
+        download_name='optimized_resume.pdf',
+        mimetype='application/pdf')
     if 'file' not in request.files:
         return {'error': 'No file'}, 400
     file = request.files['file']
