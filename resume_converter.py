@@ -1,4 +1,7 @@
-"""
+where is the code number?6:17 PMClaude responded: It's on lines 530-533 in the file.It's on lines 530-533 in the file.
+But the easiest way is — do you want me to just give you the complete updated file to copy and paste all at once?
+Just say yes and I'll give you the whole thing! 😊You said: next?next?6:20 PMClaude responded: Here's the complete updated file.Here's the complete updated file. Go to GitHub, select all code (Ctrl+A), delete it, and paste this:
+python"""
 Resume Converter v7.6 — Flask API
 POST /convert  { "text": "...", "filename": "Name.docx" }
 
@@ -25,8 +28,6 @@ import io, re
 
 app = Flask(__name__)
 FONT = "Calibri"
-
-# ── Section registry ──────────────────────────────────────────────────────────
 
 MULTI_WORD = [
     ('PROFESSIONAL EXPERIENCE', 'PROF_EXP_TAG'),
@@ -85,8 +86,6 @@ LINKEDIN_RE = re.compile(r'(?:linkedin\.com/in/[\w-]+|Linkedin|LinkedIn)', re.I)
 LINKEDIN_URL = 'https://www.linkedin.com/in/nikhil-reddy-a732b1404/'
 
 
-# ── Text cleaning ─────────────────────────────────────────────────────────────
-
 def clean_text(text):
     text = re.sub(r'\*{1,3}([^*\n]+)\*{1,3}', r'\1', text)
     text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
@@ -94,8 +93,6 @@ def clean_text(text):
     text = re.sub(r'\[[^\]]{0,60}\]', '', text)
     return text
 
-
-# ── Normalize ────────────────────────────────────────────────────────────────
 
 def normalize(text):
     for real,tag in MULTI_WORD:
@@ -124,8 +121,6 @@ def normalize(text):
     return re.sub(r'\n{3,}', '\n\n', text).strip()
 
 
-# ── Pre-process ───────────────────────────────────────────────────────────────
-
 def preprocess(text):
     out = []
     for line in text.split('\n'):
@@ -138,8 +133,6 @@ def preprocess(text):
         out.append(('TEXT', line.strip()))
     return out
 
-
-# ── Detection helpers ─────────────────────────────────────────────────────────
 
 def is_section(text):
     s = text.strip().upper()
@@ -165,8 +158,6 @@ def looks_like_contact(text):
         re.search(r'linkedin|github|portfolio', s, re.I) or
         (('Tampa' in s or 'FL' in s or 'USA' in s) and '|' in s))
 
-
-# ── XML / formatting helpers ──────────────────────────────────────────────────
 
 def set_font(run, size_pt, bold=False, color=None, underline=False):
     run.font.name    = FONT
@@ -253,8 +244,6 @@ def add_hyperlink(para, text, url):
     return hyperlink
 
 
-# ── Paragraph builders ────────────────────────────────────────────────────────
-
 def make_para(doc, style='Normal', before=0, after=0, line=276, align='left', border=False):
     para = doc.add_paragraph(style=style)
     set_spacing(para, before, after, line)
@@ -269,16 +258,12 @@ def add_run(para, text, size_pt, bold=False, color=None, underline=False):
     return run
 
 
-# ── Section spacer ────────────────────────────────────────────────────────────
-
 def p_spacer(doc):
     para = make_para(doc, style='Normal', before=0, after=0, line=200)
     run  = para.add_run(' ')
     set_font(run, 4, bold=False)
     return para
 
-
-# ── Named builders ────────────────────────────────────────────────────────────
 
 def p_name(doc, text):
     para = make_para(doc, before=0, after=0, line=220, align='center')
@@ -364,8 +349,6 @@ def p_plain(doc, text):
     add_run(para, text, 10, bold=False)
     return para
 
-
-# ── Main builder ──────────────────────────────────────────────────────────────
 
 def build_docx(text):
     text = clean_text(text)
