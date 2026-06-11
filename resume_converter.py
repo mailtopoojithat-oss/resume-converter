@@ -416,3 +416,107 @@ def build_docx(text):
         if sec_name in SKILLS_SECTIONS:
             para = p_skills(doc, stripped)
             keep_together(para, keep_lines=True, keep_next=False)
+            continue
+
+        if sec_name == 'EDUCATION':
+            para = (p_edu_degree if is_edu_degree(stripped) else p_edu_school)(doc, stripped)
+            current_block.append(para)
+            continue
+
+        if sec_name in PLAIN_SECTIONS - {'SUMMARY', 'EDUCATION'}:
+            para = p_plain(doc, stripped)
+            keep_together(para, keep_lines=True, keep_next=False)
+            continue
+
+        if sec_name in ('PROFESSIONAL EXPERIENCE', 'EXPERIENCE', 'WORK EXPERIENCE'):
+            if is_job_line(stripped):
+                close_block()
+                para = p_job(doc, stripped)
+                current_block = [para]
+            else:
+                para = p_bullet(doc, stripped)
+                current_block.append(para)
+            continue
+
+        if sec_name == 'PROJECTS':
+            if is_bullet or stripped.startswith(ACTION_VERBS):
+                para = p_bullet(doc, stripped)
+                current_block.append(para)
+            else:
+                close_block()
+                if project_count > 0:
+                    p_spacer(doc)
+                project_count += 1
+                para = p_job(doc, stripped)
+                current_block = [para]
+            continue
+
+        if sec_name in BULLET_SECTIONS:
+            para = p_bullet(doc, stripped)
+            current_block.append(para)
+            continue
+
+        para = p_plain(doc, stripped)
+        keep_together(para, keep_lines=True, keep_next=False)
+
+    close_block()
+    return doc
+
+
+# ── Flask ─────────────────────────────────────────────────────────────────────
+
+@app.route('/convert', methods=['POST'])
+def convert():
+    data     = request.json or {}
+    text     = data.get('text', '')
+    filename = data.get('filename', 'resume.docx')
+    if not filename.endswith('.docx'): filename += '.docx'
+    doc = build_docx(text)
+    buf = io.BytesIO(); doc.save(buf); buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+
+@app.route('/health', methods=['GET'])
+def health():
+    return {'status': 'ok', 'version': '7.6'}
+
+@app.route('/text-to-pdf', methods=['POST'])
+def text_to_pdf():
+    from fpdf import FPDF
+    optimized_text = request.form.get('optimized_text', '')
+    if not optimized_text:
+        return {'error': 'No optimized_text provided'}, 400
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_margins(15, 15, 15)
+    pdf.set_font("Arial", size=11)
+
+    for line in optimized_text.split('\n'):
+        if line.strip() == '':
+            pdf.ln(4)
+        else:
+            pdf.multi_cell(0, 6, txt=line.strip())
+
+    pdf_bytes = pdf.output(dest='S').encode('latin-1')
+    buf = io.BytesIO(pdf_bytes)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True,
+        download_name='optimized_resume.pdf',
+        mimetype='application/pdf')
+
+@app.route('/extract', methods=['POST'])
+def extract():
+    if 'file' not in request.files:
+        return {'error': 'No file'}, 400
+    file = request.files['file']
+    filename = file.filename.lower()
+    content = file.read()
+    if filename.endswith('.pdf') or content[:4] == b'%PDF':
+        import pdfplumber
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            text = '\n'.join([page.extract_text() or '' for page in pdf.pages])
+    else:
+        doc = Document(io.BytesIO(content))
+        text = '\n'.join([p.text for p in doc.paragraphs if p.text.strip()])
+    return {'text': text, 'filename': file.filename}
