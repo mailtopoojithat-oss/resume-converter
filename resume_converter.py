@@ -482,9 +482,9 @@ def health():
 
 @app.route('/text-to-pdf', methods=['POST'])
 def text_to_pdf():
-    from reportlab==4.2.5.pdfgen import canvas
-    from reportlab==4.2.5.lib.pagesizes import A4
-    from reportlab==4.2.5.lib.utils import simpleSplit
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.utils import simpleSplit
 
     optimized_text = request.form.get('optimized_text', '')
     if not optimized_text:
