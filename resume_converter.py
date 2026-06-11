@@ -1,5 +1,5 @@
 """
-Resume Converter v7.7 — Flask API
+Resume Converter v7.8 — Flask API
 POST /convert  { "text": "...", "filename": "Name.docx" }
 """
 
@@ -111,8 +111,8 @@ def preprocess(text):
     for line in text.split('\n'):
         if re.match(r'^-\s{3}', line):
             out.append(('BULLET', line[4:].rstrip())); continue
-        if re.match(r'^[-•*]\s+', line):
-            out.append(('BULLET', re.sub(r'^[-•*]\s+','',line).strip())); continue
+        if re.match(r'^[-*]\s+', line):
+            out.append(('BULLET', re.sub(r'^[-*]\s+','',line).strip())); continue
         if not line.strip():
             out.append(('BLANK', '')); continue
         out.append(('TEXT', line.strip()))
@@ -463,7 +463,7 @@ def build_docx(text):
     return doc
 
 
-# ── Flask ─────────────────────────────────────────────────────────────────────
+# Flask routes
 
 @app.route('/convert', methods=['POST'])
 def convert():
@@ -478,52 +478,43 @@ def convert():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return {'status': 'ok', 'version': '7.7'}
+    return {'status': 'ok', 'version': '7.8'}
 
 @app.route('/text-to-pdf', methods=['POST'])
 def text_to_pdf():
-    from fpdf import FPDF
-    import unicodedata
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.utils import simpleSplit
 
     optimized_text = request.form.get('optimized_text', '')
     if not optimized_text:
         return {'error': 'No optimized_text provided'}, 400
 
-    # Sanitize unicode characters that latin-1 can't handle
-    def sanitize(text):
-        replacements = {
-            '\u2013': '-',   # en dash
-            '\u2014': '-',   # em dash
-            '\u2018': "'",   # left single quote
-            '\u2019': "'",   # right single quote
-            '\u201c': '"',   # left double quote
-            '\u201d': '"',   # right double quote
-            '\u2022': '-',   # bullet
-            '\u2026': '...', # ellipsis
-            '\u00e9': 'e',   # é
-            '\u00e0': 'a',   # à
-            '\u00fc': 'u',   # ü
-        }
-        for char, replacement in replacements.items():
-            text = text.replace(char, replacement)
-        # Drop anything else that can't be encoded in latin-1
-        return text.encode('latin-1', errors='ignore').decode('latin-1')
-
-    optimized_text = sanitize(optimized_text)
-
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_margins(15, 15, 15)
-    pdf.set_font("Arial", size=11)
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+    margin = 50
+    x = margin
+    y = height - margin
+    line_height = 14
+    max_width = width - 2 * margin
+    c.setFont("Helvetica", 11)
 
     for line in optimized_text.split('\n'):
-        if line.strip() == '':
-            pdf.ln(4)
-        else:
-            pdf.multi_cell(0, 6, txt=line.strip())
+        line = line.strip()
+        if not line:
+            y -= line_height / 2
+            continue
+        wrapped = simpleSplit(line, "Helvetica", 11, max_width)
+        for wline in wrapped:
+            if y < margin:
+                c.showPage()
+                c.setFont("Helvetica", 11)
+                y = height - margin
+            c.drawString(x, y, wline)
+            y -= line_height
 
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
-    buf = io.BytesIO(pdf_bytes)
+    c.save()
     buf.seek(0)
     return send_file(buf, as_attachment=True,
         download_name='optimized_resume.pdf',
