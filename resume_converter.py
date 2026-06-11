@@ -478,14 +478,38 @@ def convert():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return {'status': 'ok', 'version': '7.6'}
+    return {'status': 'ok', 'version': '7.7'}
 
 @app.route('/text-to-pdf', methods=['POST'])
 def text_to_pdf():
     from fpdf import FPDF
+    import unicodedata
+
     optimized_text = request.form.get('optimized_text', '')
     if not optimized_text:
         return {'error': 'No optimized_text provided'}, 400
+
+    # Sanitize unicode characters that latin-1 can't handle
+    def sanitize(text):
+        replacements = {
+            '\u2013': '-',   # en dash
+            '\u2014': '-',   # em dash
+            '\u2018': "'",   # left single quote
+            '\u2019': "'",   # right single quote
+            '\u201c': '"',   # left double quote
+            '\u201d': '"',   # right double quote
+            '\u2022': '-',   # bullet
+            '\u2026': '...', # ellipsis
+            '\u00e9': 'e',   # é
+            '\u00e0': 'a',   # à
+            '\u00fc': 'u',   # ü
+        }
+        for char, replacement in replacements.items():
+            text = text.replace(char, replacement)
+        # Drop anything else that can't be encoded in latin-1
+        return text.encode('latin-1', errors='ignore').decode('latin-1')
+
+    optimized_text = sanitize(optimized_text)
 
     pdf = FPDF()
     pdf.add_page()
