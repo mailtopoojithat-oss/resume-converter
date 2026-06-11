@@ -1,5 +1,5 @@
 """
-Resume Converter v7.6 — Flask API
+Resume Converter v7.7 — Flask API
 POST /convert  { "text": "...", "filename": "Name.docx" }
 """
 
