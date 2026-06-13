@@ -534,4 +534,4 @@ def extract():
     else:
         doc = Document(io.BytesIO(content))
         text = '\n'.join([p.text for p in doc.paragraphs if p.text.strip()])
-   return jsonify({'text': text, 'filename': file.filename})
+     return jsonify({'text': text, 'filename': file.filename})
