@@ -3,7 +3,7 @@ Resume Converter v7.8 — Flask API
 POST /convert  { "text": "...", "filename": "Name.docx" }
 """
 
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, jsonify
 from docx import Document
 from docx.shared import Pt, Emu, RGBColor
 from docx.oxml.ns import qn
